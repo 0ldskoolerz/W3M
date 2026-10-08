@@ -71,6 +71,12 @@ static void panel_set(const char *name, const char *text) {
 
 static char g_status[128] = "W3M listo";
 
+/* fwd decls: EWMH + menu (definitions below) */
+static void ewmh_update_client_list(void);
+static void ewmh_update_active(void);
+static void ewmh_update_state(int core_id);
+static void menu_open(int px, int py);
+
 /* ---------- plugin hooks ---------- */
 void wm_hook_notify(const char *msg) { snprintf(g_status, sizeof g_status, "%s", msg); }
 void wm_hook_status(const char *m, const char *t) { panel_set(m, t); }
@@ -127,6 +133,8 @@ void wm_hook_focus(int id) {
     if (!xw) return;
     XSetInputFocus(X.dpy, xw->client, RevertToPointerRoot, CurrentTime);
     XRaiseWindow(X.dpy, xw->frame);
+    ewmh_update_active();
+    ewmh_update_state(id);
     /* redraw frame (focus color) + taskbar */
     XClearArea(X.dpy, xw->frame, 0, 0, 0, 0, True);
     if (X.taskbar) XClearArea(X.dpy, X.taskbar, 0, 0, 0, 0, True);
@@ -155,6 +163,11 @@ int  wm_hook_window_id(int idx) {
     if (idx < 0 || idx >= g_wm.count) return -1;
     return g_wm.windows[idx].id;
 }
+
+
+/* fwd decls (definitions later in file) */
+static void apply_core_geometry(int core_id);
+bool wm_hook_close_window(int id);
 
 /* ---------- frame geometry mapping ---------- */
 /* core box == frame geometry (x,y,w,h). client sits inside at
@@ -337,6 +350,9 @@ static void adopt(Window client, XWindowAttributes *wa) {
     XMapWindow(X.dpy, frame);
     XMapWindow(X.dpy, client);
     wm_focus(&g_wm, core_id);
+    ewmh_update_client_list();
+    ewmh_update_active();
+    ewmh_update_state(core_id);
     plugins_call(&g_plugins, "on_window_focused", "ds", core_id,
                  wm_hook_window_title(core_id));
     if (X.taskbar) XClearArea(X.dpy, X.taskbar, 0, 0, 0, 0, True);
@@ -355,6 +371,8 @@ static void unmanage(XWin *xw, bool destroyed) {
         plugins_call(&g_plugins, "on_window_closed", "d", id);
     }
     XDestroyWindow(X.dpy, xw->frame);
+    ewmh_update_client_list();
+    ewmh_update_active();
     int idx = (int)(xw - X.wins);
     memmove(&X.wins[idx], &X.wins[idx + 1],
             (size_t)(X.count - idx - 1) * sizeof(XWin));
@@ -425,8 +443,7 @@ static void drag_loop(int core_id, int hit) {
 static void taskbar_click(int px, int py) {
     (void)py;
     if (px < 70) {
-        /* start area: no menu yet; let plugins know via status */
-        snprintf(g_status, sizeof g_status, "W3M %d ventanas", g_wm.count);
+        menu_open(2, X.sh - g_cfg.taskbar_h);
         return;
     }
     int x = 70;
@@ -448,6 +465,199 @@ static void taskbar_click(int px, int py) {
         }
         x += TASKBAR_BTN_W + 4;
     }
+}
+
+
+/* ---------- EWMH support ---------- */
+static struct {
+    Atom supporting_check, wm_name, wm_pid, supported, active_window,
+         client_list, close_window, wm_state, wm_state_maximized_vert,
+         wm_state_maximized_horz, wm_state_focused, wm_window_type,
+         wm_window_type_dock, utf8_string;
+} A;
+
+static void ewmh_init(void) {
+    Display *d = X.dpy;
+    A.supporting_check     = XInternAtom(d, "_NET_SUPPORTING_WM_CHECK", False);
+    A.wm_name              = XInternAtom(d, "_NET_WM_NAME", False);
+    A.wm_pid               = XInternAtom(d, "_NET_WM_PID", False);
+    A.supported            = XInternAtom(d, "_NET_SUPPORTED", False);
+    A.active_window        = XInternAtom(d, "_NET_ACTIVE_WINDOW", False);
+    A.client_list          = XInternAtom(d, "_NET_CLIENT_LIST", False);
+    A.close_window         = XInternAtom(d, "_NET_CLOSE_WINDOW", False);
+    A.wm_state             = XInternAtom(d, "_NET_WM_STATE", False);
+    A.wm_state_maximized_vert = XInternAtom(d, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+    A.wm_state_maximized_horz = XInternAtom(d, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+    A.wm_state_focused     = XInternAtom(d, "_NET_WM_STATE_FOCUSED", False);
+    A.wm_window_type       = XInternAtom(d, "_NET_WM_WINDOW_TYPE", False);
+    A.wm_window_type_dock  = XInternAtom(d, "_NET_WM_WINDOW_TYPE_DOCK", False);
+    A.utf8_string          = XInternAtom(d, "UTF8_STRING", False);
+
+    Window check = XCreateSimpleWindow(d, X.root, -1, -1, 1, 1, 0, 0, 0);
+    XChangeProperty(d, X.root, A.supporting_check, XA_WINDOW, 32,
+                    PropModeReplace, (unsigned char *)&check, 1);
+    XChangeProperty(d, check, A.supporting_check, XA_WINDOW, 32,
+                    PropModeReplace, (unsigned char *)&check, 1);
+    const char *name = "W3M";
+    XChangeProperty(d, check, A.wm_name, A.utf8_string, 8, PropModeReplace,
+                    (unsigned char *)name, (int)strlen(name));
+    long pid = (long)getpid();
+    XChangeProperty(d, check, A.wm_pid, XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)&pid, 1);
+
+    Atom supported[] = {
+        A.supporting_check, A.wm_name, A.wm_pid, A.active_window,
+        A.client_list, A.close_window, A.wm_state,
+        A.wm_state_maximized_vert, A.wm_state_maximized_horz,
+        A.wm_state_focused, A.wm_window_type, A.wm_window_type_dock,
+    };
+    XChangeProperty(d, X.root, A.supported, XA_ATOM, 32, PropModeReplace,
+                    (unsigned char *)supported,
+                    (int)(sizeof supported / sizeof supported[0]));
+}
+
+static void ewmh_update_client_list(void) {
+    Window clients[32];
+    int n = 0;
+    for (int i = 0; i < X.count; i++)
+        clients[n++] = X.wins[i].client;
+    XChangeProperty(X.dpy, X.root, A.client_list, XA_WINDOW, 32,
+                    PropModeReplace, (unsigned char *)clients, n);
+}
+
+static void ewmh_update_active(void) {
+    Window active = None;
+    XWin *xw = g_wm.focus_id >= 0 ? xwin_by_core(g_wm.focus_id) : NULL;
+    if (xw) active = xw->client;
+    XChangeProperty(X.dpy, X.root, A.active_window, XA_WINDOW, 32,
+                    PropModeReplace, (unsigned char *)&active, 1);
+}
+
+static void ewmh_update_state(int core_id) {
+    XWin *xw = xwin_by_core(core_id);
+    WmWindow *cw = wm_find(&g_wm, core_id);
+    if (!xw || !cw) return;
+    Atom states[3];
+    int n = 0;
+    if (cw->maximized) {
+        states[n++] = A.wm_state_maximized_vert;
+        states[n++] = A.wm_state_maximized_horz;
+    }
+    if (cw->focused) states[n++] = A.wm_state_focused;
+    if (n == 0) XDeleteProperty(X.dpy, xw->client, A.wm_state);
+    else XChangeProperty(X.dpy, xw->client, A.wm_state, XA_ATOM, 32,
+                         PropModeReplace, (unsigned char *)states, n);
+}
+
+static void ewmh_client_message(XClientMessageEvent *cm) {
+    if (cm->message_type == A.active_window) {
+        XWin *xw = xwin_by_client(cm->window);
+        if (xw) {
+            WmWindow *cw = wm_find(&g_wm, xw->core_id);
+            if (cw && cw->minimized) {
+                wm_toggle_minimize(&g_wm, xw->core_id);
+                XMapWindow(X.dpy, xw->frame);
+            }
+            wm_focus(&g_wm, xw->core_id);
+        }
+    } else if (cm->message_type == A.close_window) {
+        XWin *xw = xwin_by_client(cm->window);
+        if (xw) wm_hook_close_window(xw->core_id);
+    } else if (cm->message_type == A.wm_state) {
+        XWin *xw = xwin_by_client(cm->window);
+        if (xw) {
+            WmWindow *cw = wm_find(&g_wm, xw->core_id);
+            Atom first = (Atom)cm->data.l[1];
+            bool add = cm->data.l[0] == 1;
+            bool toggle = cm->data.l[0] == 2;
+            if (cw && (first == A.wm_state_maximized_vert
+                    || first == A.wm_state_maximized_horz)) {
+                if (toggle || (add != cw->maximized)) {
+                    wm_toggle_maximize(&g_wm, xw->core_id);
+                    apply_core_geometry(xw->core_id);
+                    XClearWindow(X.dpy, xw->frame);
+                }
+            }
+            ewmh_update_state(xw->core_id);
+        }
+    }
+}
+
+/* ---------- system menu (Win 3.x style) ---------- */
+static Window g_menu_win;
+static int g_menu_sel = -1;
+static const char *menu_items[] = {"Nueva ventana", "Cascada", "Minimizar todo"};
+#define MENU_W 130
+#define MENU_H (3 * 20 + 4)
+
+static void menu_open(int px, int py) {
+    if (g_menu_win) return;
+    int my = py - MENU_H - 2;
+    if (my < 0) my = 0;
+    g_menu_win = XCreateSimpleWindow(X.dpy, X.root, px, my,
+                                     MENU_W, MENU_H, 1, X.c_fg, X.c_bg);
+    XSelectInput(X.dpy, g_menu_win, ExposureMask | ButtonPressMask);
+    XMapRaised(X.dpy, g_menu_win);
+    g_menu_sel = 0;
+}
+
+static void menu_close(void) {
+    if (!g_menu_win) return;
+    XUnmapWindow(X.dpy, g_menu_win);
+    XDestroyWindow(X.dpy, g_menu_win);
+    g_menu_win = None;
+    g_menu_sel = -1;
+}
+
+static void menu_draw(void) {
+    if (!g_menu_win) return;
+    XSetForeground(X.dpy, X.gc, X.c_bg);
+    XFillRectangle(X.dpy, g_menu_win, X.gc, 0, 0, MENU_W, MENU_H);
+    for (int i = 0; i < 3; i++) {
+        if (i == g_menu_sel) {
+            XSetForeground(X.dpy, X.gc, X.c_accent);
+            XFillRectangle(X.dpy, g_menu_win, X.gc, 2, 2 + i * 20, MENU_W - 4, 20);
+        }
+        XSetForeground(X.dpy, X.gc, (i == g_menu_sel) ? X.c_white : X.c_fg);
+        XDrawString(X.dpy, g_menu_win, X.gc, 8, 16 + i * 20,
+                    menu_items[i], (int)strlen(menu_items[i]));
+    }
+}
+
+static void menu_click(int y) {
+    int sel = (y - 2) / 20;
+    if (sel < 0 || sel > 2) { menu_close(); return; }
+    switch (sel) {
+    case 0:
+        if (system("xterm >/dev/null 2>&1 &") != 0)
+            snprintf(g_status, sizeof g_status, "sin xterm");
+        break;
+    case 1: {
+        int n = 0;
+        for (int i = 0; i < g_wm.count; i++) {
+            WmWindow *cw = &g_wm.windows[i];
+            cw->box.x = 24 + (n % 8) * 26;
+            cw->box.y = 24 + (n % 8) * 26;
+            cw->maximized = false;
+            n++;
+        }
+        wm_constrain(&g_wm);
+        for (int i = 0; i < g_wm.count; i++)
+            apply_core_geometry(g_wm.windows[i].id);
+        break;
+    }
+    case 2:
+        for (int i = 0; i < g_wm.count; i++) {
+            WmWindow *cw = &g_wm.windows[i];
+            if (!cw->minimized) {
+                wm_toggle_minimize(&g_wm, cw->id);
+                XUnmapWindow(X.dpy, xwin_by_core(cw->id)->frame);
+            }
+        }
+        break;
+    }
+    if (X.taskbar) XClearArea(X.dpy, X.taskbar, 0, 0, 0, 0, True);
+    menu_close();
 }
 
 /* ---------- main ---------- */
@@ -489,6 +699,8 @@ int main(int argc, char **argv) {
         return 1;
     }
     XSetFont(X.dpy, X.gc, X.font->fid);
+
+    ewmh_init();
 
     /* become the WM on this screen */
     XSelectInput(X.dpy, X.root,
@@ -589,10 +801,16 @@ int main(int argc, char **argv) {
                     XWin *xw = xwin_by_frame(ev.xexpose.window);
                     if (xw) draw_frame(xw);
                     else if (ev.xexpose.window == X.taskbar) draw_taskbar();
+                    else if (ev.xexpose.window == g_menu_win) menu_draw();
                 }
                 break;
             }
             case ButtonPress: {
+                if (ev.xbutton.window == g_menu_win) {
+                    menu_click(ev.xbutton.y);
+                    break;
+                }
+                if (g_menu_win) menu_close();
                 if (ev.xbutton.window == X.taskbar) {
                     taskbar_click(ev.xbutton.x, ev.xbutton.y);
                     break;
@@ -628,6 +846,10 @@ int main(int argc, char **argv) {
                     break;
                 default: break;
                 }
+                break;
+            }
+            case ClientMessage: {
+                ewmh_client_message(&ev.xclient);
                 break;
             }
             case KeyPress: {

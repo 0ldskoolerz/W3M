@@ -24,7 +24,9 @@ scriptables en Lua con addons de sistema (audio, red, bluetooth, discos).
 | Mover (título) / redimensionar (bordes/esquinas) | ✅ implementado (pointer grab) |
 | Taskbar con botones + panel configurable | ✅ implementado |
 | Alt+Tab, maximizar/minimizar/cerrar | ✅ implementado |
-| EWMH (`_NET_*`), multi-monitor, multi-desktop | 🚧 pendiente |
+| EWMH: `_NET_SUPPORTING_WM_CHECK`, `_NET_WM_NAME/PID`, `_NET_SUPPORTED`, `_NET_ACTIVE_WINDOW`, `_NET_CLIENT_LIST`, `_NET_CLOSE_WINDOW`, `_NET_WM_STATE` | ✅ implementado |
+| Menú de sistema (taskbar → W3M): Nueva ventana / Cascada / Minimizar todo | ✅ implementado |
+| Multi-monitor, multi-desktop (`_NET_WM_DESKTOP`) | 🚧 pendiente |
 
 ## Características
 
@@ -32,6 +34,8 @@ scriptables en Lua con addons de sistema (audio, red, bluetooth, discos).
 - Mover arrastrando la barra de título; redimensionar por bordes/esquinas
 - Foco follow-clic + Alt+Tab
 - Taskbar propia con botones por ventana y panel configurable
+- EWMH básico: taskbars/pagers externos y apps que consultan `_NET` te reconocen
+- Menú de sistema Win 3.x: clic en "W3M" (Nueva ventana / Cascada / Minimizar todo)
 - Plugins Lua (cada uno en su estado aislado) con eventos y hotkeys
 - Addons: volumen (`pactl`), red (`nmcli`), bluetooth (`bluetoothctl`),
   discos (`lsblk`/`udisks2`)

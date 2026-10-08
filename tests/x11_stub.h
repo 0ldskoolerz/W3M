@@ -152,6 +152,18 @@ int XSetErrorHandler(void *);
 int XSetIOErrorHandler(void *);
 void XFree(void *);
 
+
+#define XA_PRIMARY 1
+#define XA_WINDOW 33
+#define XA_ATOM 4
+#define XA_CARDINAL 6
+#define PropModeReplace 0
+#define PropModeAppend 2
+
+int XChangeProperty(Display *, Window, Atom, Atom, int, int, const unsigned char *, int);
+int XDeleteProperty(Display *, Window, Atom);
+int XMapRaised(Display *, Window);
+
 int DefaultScreen(Display *);
 Window RootWindow(Display *, int);
 int DisplayWidth(Display *, int);

@@ -1,6 +1,21 @@
 # Changelog
 
+## [0.5.0] — EWMH básico + menú de sistema
+
+### Añadido
+- EWMH: `_NET_SUPPORTING_WM_CHECK` (ventana de identificación con
+  `_NET_WM_NAME`="W3M" y `_NET_WM_PID`), `_NET_SUPPORTED`,
+  `_NET_ACTIVE_WINDOW`, `_NET_CLIENT_LIST`, `_NET_CLOSE_WINDOW`,
+  `_NET_WM_STATE` (maximized/focused, consultable y modificable por
+  clientes), `_NET_WM_WINDOW_TYPE` reconocido (DOCK).
+- Respuesta a ClientMessages EWMH: activar, cerrar y (des)maximizar
+  ventanas desde fuera (taskbars, atajos de desktop, scripts).
+- Menú de sistema Win 3.x: clic en "W3M" en la taskbar → Nueva ventana
+  (xterm), Cascada, Minimizar todo.
+- Hints EWMH actualizados en adopt/foco/cierre de ventanas.
+
 ## [0.4.0] — Reparenting completo: W3M es un WM usable
+ — Reparenting completo: W3M es un WM usable
 
 ### Añadido
 - **Reparenting**: cada cliente se adopta en un frame Win 3.x propio
