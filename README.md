@@ -81,6 +81,13 @@ docs/             guías (portadas de win3wm, ajustadas a X11)
 - [docs/PLUGINS.md](docs/PLUGINS.md) — API Lua, eventos, addons
 - [docs/CONFIG.md](docs/CONFIG.md) — referencia de configuración
 
+## Aplicaciones del escritorio
+
+El paquete hermano [w3m-apps](https://github.com/0ldskoolerz/w3m-apps)
+añade las apps clásicas con la misma estética: explorador de archivos
+(crear/cortar/copiar/comprimir/descomprimir/abrir), terminal, administrador
+de tareas, calculadora y bloc de notas — Xlib puro sobre applets busybox.
+
 ## Relación con win3wm
 
 W3M reutiliza el core lógico de win3wm (wm.c, config.c, plugins.c) verificado
