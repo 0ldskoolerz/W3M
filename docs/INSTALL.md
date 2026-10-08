@@ -45,6 +45,11 @@ exec /ruta/a/w3m /ruta/a/config/w3m.conf
 y arranca con `startx`. También compatible con gestores de login
 (entrada "custom session" apuntando a ese script).
 
+## 3.5 Servidor sin entorno gráfico (headless)
+
+Ver la guía dedicada: [HEADLESS.md](HEADLESS.md) — Xvfb, verificación
+automática con `scripts/verify-headless.sh`, VNC por túnel SSH.
+
 ## 4. Instalar como paquete pacman
 
 ```sh
