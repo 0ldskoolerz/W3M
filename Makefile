@@ -14,7 +14,7 @@ BIN := w3m
 
 all: $(BIN)
 
-$(BIN): $(SRC) src/wm.h src/config.h src/plugins.h src/x11.h
+$(BIN): $(SRC) src/wm.h src/config.h src/plugins.h
 	$(CC) $(CFLAGS) -DWM_WITH_LUA $(X11_CFLAGS) $(LUA_CFLAGS) \
 	      -o $@ $(SRC) $(X11_LIBS) $(LUA_LIBS) -lm
 

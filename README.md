@@ -17,12 +17,16 @@ scriptables en Lua con addons de sistema (audio, red, bluetooth, discos).
 | Componente | Estado |
 |---|---|
 | Core lógico (ventanas, foco, z-order, hit-testing) | ✅ completo, 35 tests |
-| Config rc-file + temas | ✅ completo |
+| Config rc-file + temas (colores X11) | ✅ completo |
 | Host de plugins Lua + API `wm.*` + `on_key` | ✅ completo |
 | Addons de sistema (audio/red/bluetooth/discos) | ✅ portados |
-| Frontend X11 (reparenting, decorations, taskbar) | 🚧 en desarrollo |
+| Frontend X11: reparenting + frames Win 3.x | ✅ implementado |
+| Mover (título) / redimensionar (bordes/esquinas) | ✅ implementado (pointer grab) |
+| Taskbar con botones + panel configurable | ✅ implementado |
+| Alt+Tab, maximizar/minimizar/cerrar | ✅ implementado |
+| EWMH (`_NET_*`), multi-monitor, multi-desktop | 🚧 pendiente |
 
-## Características (objetivo)
+## Características
 
 - Decoración propia estilo Win 3.x: barra de título, botones `_`/`^`/`x`
 - Mover arrastrando la barra de título; redimensionar por bordes/esquinas
