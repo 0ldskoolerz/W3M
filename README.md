@@ -83,10 +83,18 @@ docs/             guías (portadas de win3wm, ajustadas a X11)
 
 ## Aplicaciones del escritorio
 
-El paquete hermano [w3m-apps](https://github.com/0ldskoolerz/w3m-apps)
-añade las apps clásicas con la misma estética: explorador de archivos
-(crear/cortar/copiar/comprimir/descomprimir/abrir), terminal, administrador
-de tareas, calculadora y bloc de notas — Xlib puro sobre applets busybox.
+Los paquetes hermanos completan el escritorio:
+
+- [w3m-apps](https://github.com/0ldskoolerz/w3m-apps) — apps clásicas:
+  explorador de archivos (crear/cortar/copiar/comprimir/descomprimir/abrir),
+  terminal, administrador de tareas, calculadora y bloc de notas (Xlib
+  puro sobre applets busybox)
+- [w3m-net](https://github.com/0ldskoolerz/w3m-net) — suite de red
+  estilo Trinux: ping, DNS, rutas, ARP, puertos, escaneo LAN, sniffer,
+  tráfico, netcat y estado de enlace (11 apps)
+- [w3m-linux](https://github.com/0ldskoolerz/w3m-linux) — la distro
+  completa: Buildroot + BusyBox + W3M + todas las apps en una ISO de
+  ~60 MB
 
 ## Relación con win3wm
 
