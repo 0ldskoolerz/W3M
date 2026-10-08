@@ -1,6 +1,6 @@
 # Maintainer: 0ldskoolerz <0ldskoolerz@users.noreply.github.com>
 pkgname=w3m-wm
-pkgver=0.3.0
+pkgver=0.5.0
 pkgrel=1
 pkgdesc="W3M — gestor de ventanas X11 minimalista estilo Windows 3.x (Xlib puro + plugins Lua)"
 arch=('x86_64' 'i686' 'aarch64')
