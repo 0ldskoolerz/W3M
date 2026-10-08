@@ -1,0 +1,11 @@
+# build artifacts
+w3m
+w3m-core
+win3wm
+tests/test_wm
+*.o
+
+# editor / OS
+*.swp
+*~
+.DS_Store
